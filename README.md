@@ -1,3 +1,8 @@
+> **Seer-Apollo** is an experimental fork of [Seer](https://github.com/connormcmonigle/seer-nnue) by Connor McMonigle.
+> The engine, its search and its neural networks are his work; everything below this box is Seer's original README.
+> This fork explores my ideas, mostly about : endgames, tablebases and search. Changes live on separate branches, are SPRT-tested before being kept,
+> and are developed with the help of AI coding tools. Seer-Apollo is not affiliated with or endorsed by Connor.
+
 <p align="center">
   <img src="logo/logo_1.png" height="100" width="200">
 </p>
