@@ -57,8 +57,11 @@ inline evaluate_info search_worker::evaluate(
   const auto cont_feature_hash = zobrist::lower_quarter(counter_move_hash ^ follow_move_hash);
   const auto pawn_feature_hash = zobrist::lower_quarter(bd.pawn_hash());
   const auto eval_feature_hash = data_packet.eval_feature_hash;
+  const auto white_non_pawn_feature_hash = zobrist::lower_quarter(bd.white_non_pawn_hash());
+  const auto black_non_pawn_feature_hash = zobrist::lower_quarter(bd.black_non_pawn_hash());
 
-  const auto feature_hash = composite_feature_hash_of(pawn_feature_hash, eval_feature_hash, cont_feature_hash, ccont_feature_hash);
+  const auto feature_hash = composite_feature_hash_of(
+      pawn_feature_hash, eval_feature_hash, cont_feature_hash, ccont_feature_hash, white_non_pawn_feature_hash, black_non_pawn_feature_hash);
   score_type static_value = data_packet.eval_before_adjustment;
 
   if (!is_check) { static_value += internal.correction.us(bd.turn()).correction_for(feature_hash); }
