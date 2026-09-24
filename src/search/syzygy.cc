@@ -205,8 +205,9 @@ tb_dtz_result probe_dtz(const chess::board& bd) noexcept {
 
 void init(const std::string& path) noexcept {
   tb_init(path.c_str());
-  TB_LARGEST = 8;
-  std::cerr << "=== SEER-APOLLO LICHESS TB7/TB8 ENABLED (full search probing) ===" << std::endl;
-}
+  if (g_use_lichess_tb) {
+    TB_LARGEST = 8;
+    std::cerr << "=== SEER-APOLLO LICHESS TB7/TB8 ENABLED (full search probing) ===" << std::endl;
+  }
 
 }  // namespace search::syzygy
