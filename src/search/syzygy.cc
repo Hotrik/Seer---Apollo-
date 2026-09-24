@@ -26,7 +26,14 @@ extern "C" unsigned TB_LARGEST;
 
 namespace search::syzygy {
 
+// TB7/TB8Op1 : Online probing of tablebase.lichess.ovh is OFF by default: it sends requests to
+// Lichess's servers mid-search, and counts as outside help in rating lists and
+// tournaments. Build with -DSEER_ENABLE_LICHESS_TB to turn it on. 
+#ifdef SEER_ENABLE_LICHESS_TB
 bool g_use_lichess_tb = true;
+#else
+bool g_use_lichess_tb = false;
+#endif
 
 std::string escape_fen(const std::string& fen) {
   std::string escaped = fen;
