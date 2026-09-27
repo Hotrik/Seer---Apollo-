@@ -209,5 +209,6 @@ void init(const std::string& path) noexcept {
     TB_LARGEST = 8;
     std::cerr << "=== SEER-APOLLO LICHESS TB7/TB8 ENABLED (full search probing) ===" << std::endl;
   }
+}
 
 }  // namespace search::syzygy
