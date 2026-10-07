@@ -23,6 +23,10 @@
 namespace search {
 
 void worker_orchestrator::reset() noexcept {
+  // A search that stopped itself has already printed bestmove but may still be unwinding. Wait for
+  // every worker before clearing the TT and resetting their state, or ucinewgame can pull it out
+  // from under them (this was a rare crash at the start of a game).
+  for (auto& worker_thread : worker_threads_) { worker_thread->stop_sync_(); }
   tt_->clear();
   for (auto& worker_thread : worker_threads_) { worker_thread->worker().internal.reset(); };
 }
@@ -41,6 +45,8 @@ void worker_orchestrator::resize(const std::size_t& new_size) noexcept {
 
 void worker_orchestrator::go(const chess::board_history& hist, const chess::board& bd) noexcept {
   std::lock_guard access_lock(access_mutex_);
+  // Same reason: let the previous search finish unwinding before touching shared state.
+  for (auto& worker_thread : worker_threads_) { worker_thread->stop_sync_(); }
 
   tt_->update_gen();
   for (std::size_t i(0); i < worker_threads_.size(); ++i) {
@@ -55,6 +61,10 @@ void worker_orchestrator::stop() noexcept {
   std::lock_guard access_lock(access_mutex_);
   std::for_each(worker_threads_.begin(), worker_threads_.end(), [](auto& worker_thread) { worker_thread->stop(); });
   is_searching_.store(false);
+}
+
+void worker_orchestrator::wait_idle() noexcept {
+  for (auto& worker_thread : worker_threads_) { worker_thread->wait_idle(); }
 }
 
 bool worker_orchestrator::is_searching() noexcept {

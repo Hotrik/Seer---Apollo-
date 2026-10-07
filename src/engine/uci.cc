@@ -158,6 +158,9 @@ void uci::stop() noexcept {
 
 void uci::ready() noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
+  // When no search is running, only answer once the last one has fully stopped, so "isready" really
+  // means ready. During a search we still answer straight away, as UCI requires.
+  if (!orchestrator_.is_searching()) { orchestrator_.wait_idle(); }
   os << "readyok" << std::endl;
 }
 

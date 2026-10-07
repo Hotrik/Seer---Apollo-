@@ -46,6 +46,7 @@ struct worker_orchestrator {
   void stop() noexcept;
 
   [[nodiscard]] bool is_searching() noexcept;
+  void wait_idle() noexcept;
 
   [[nodiscard]] std::size_t nodes() const noexcept;
   [[nodiscard]] std::size_t tb_hits() const noexcept;

@@ -65,6 +65,13 @@ struct search_worker_thread {
 
   void stop() noexcept { stop_nosync_(); }
 
+  // Block until the thread is back in its idle loop. After stop() the worker still takes a moment to
+  // unwind the search, and it keeps writing to its stack, the TT and its node counts while it does.
+  void wait_idle() noexcept {
+    std::unique_lock lock(thread_to_caller_mutex_);
+    thread_to_caller_cv_.wait(lock, [this] { return thread_state_ == thread_state::pending; });
+  }
+
   void stop_nosync_() noexcept { worker_->stop(); }
 
   void stop_sync_() noexcept {
