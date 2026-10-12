@@ -83,6 +83,33 @@ struct stack_view {
     return bd.upcoming_cycle_exists(height_, view_->history_);
   }
 
+  // Has this position occurred before? With two_fold_in_tree, one earlier occurrence inside the search tree is enough;
+  // otherwise two earlier occurrences are needed (a real threefold, game history included). The scan stops at the last
+  // irreversible move and at a null move.
+  [[nodiscard]] inline bool is_repetition(const chess::board& bd, const bool& two_fold_in_tree) const noexcept {
+    const chess::board_history& history = view_->history_;
+    const std::size_t root = history.size();
+    const std::size_t current = history.future_size(static_cast<std::size_t>(height_));
+    std::size_t limit = std::min(current, static_cast<std::size_t>(bd.lat_.half_clock));
+    for (depth_type h = height_ - 1; h >= 0; --h) {
+      if (view_->at(h).played_.is_null()) {
+        limit = std::min(limit, static_cast<std::size_t>(height_ - 1 - h));
+        break;
+      }
+    }
+
+    const chess::sided_zobrist_hash hash = bd.sided_hash();
+    int count = 0;
+    for (std::size_t back = 4; back <= limit; back += 2) {
+      const std::size_t idx = current - back;
+      const chess::sided_zobrist_hash& prev = history.at(idx);
+      if (prev.white != hash.white || prev.black != hash.black) { continue; }
+      if (two_fold_in_tree && idx > root) { return true; }
+      if (++count >= 2) { return true; }
+    }
+    return false;
+  }
+
   [[nodiscard]] constexpr chess::move counter() const noexcept {
     if (height_ <= 0) { return chess::move::null(); }
     return view_->at(height_ - 1).played_;

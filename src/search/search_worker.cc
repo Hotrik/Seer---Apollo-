@@ -196,8 +196,10 @@ pv_search_result_t<is_root> search_worker::pv_search(
   if (!is_root && bd.is_rule50_draw() && (!is_check || bd.generate_moves<chess::generation_mode::all>().size() != 0)) {
     return make_result(draw_score, chess::move::null());
   }
+  // A twofold inside the search tree is a draw in non-PV nodes; PV nodes need a real threefold (idea from Caissa).
+  if (!is_root && ss.is_repetition(bd, !is_pv)) { return make_result(draw_score, chess::move::null()); }
 
-  if (!is_root && ss.upcoming_cycle_exists(bd)) {
+  if (!is_pv && ss.upcoming_cycle_exists(bd)) {
     if (draw_score >= beta) { return make_result(draw_score, chess::move::null()); }
     alpha = std::max(draw_score, alpha);
   }
