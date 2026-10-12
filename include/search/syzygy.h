@@ -54,4 +54,15 @@ struct tb_dtz_result {
 
 void init(const std::string& path) noexcept;
 
+// Online 7-8-man tablebase (Lichess API) for the root position only, waiting at most timeout_ms.
+// success = an exact result (win / cursed win / draw / blessed loss / loss) and its best move; cached by FEN.
+struct online_result {
+  bool success{};
+  std::string category{};
+  int dtz{};
+  chess::move move{chess::move::null()};
+  int elapsed_ms{};
+};
+[[nodiscard]] online_result probe_online_root(const chess::board& bd, const int& timeout_ms) noexcept;
+
 }  // namespace search::syzygy

@@ -29,6 +29,10 @@ CPPFLAGS += -I$(INCBIN)
 CPPFLAGS += -I$(SYZYGY)
 
 LDFLAGS = -lpthread
+# Windows: WinHTTP for the online tablebase lookup (UCI OnlineTB)
+ifneq (,$(or $(findstring Windows_NT,$(OS)),$(findstring mingw,$(CXX))))
+  LDFLAGS += -lwinhttp
+endif
 
 CXXOBJECTS += $(CXXSRC:%.cc=%.o)
 CXXDEPENDS += $(CXXSRC:%.cc=%.d)

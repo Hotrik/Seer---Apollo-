@@ -47,6 +47,8 @@ struct uci {
 
   std::atomic_bool ponder_{false};
   std::atomic_bool should_quit_{false};
+  std::atomic_bool online_tb_{false};
+  std::atomic_int online_tb_ms_{800};
 
   time_manager manager_;
   simple_timer<std::chrono::milliseconds> timer_;
@@ -68,6 +70,7 @@ struct uci {
   template <typename T, typename... Ts>
   void init_time_manager(Ts&&... args) noexcept;
   void go() noexcept;
+  [[nodiscard]] bool try_online_root() noexcept;
 
   void ponder_hit() noexcept;
   void stop() noexcept;

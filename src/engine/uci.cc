@@ -65,8 +65,10 @@ auto uci::options() noexcept {
 
   auto ponder = option_callback(check_option("Ponder", default_ponder), [this](const bool& value) { ponder_.store(value); });
   auto syzygy_path = option_callback(string_option("SyzygyPath", string_option::empty), [](const std::string& path) { search::syzygy::init(path); });
+  auto online_tb = option_callback(check_option("OnlineTB", false), [this](const bool& value) { online_tb_.store(value); });
+  auto online_tb_ms = option_callback(spin_option("OnlineTBMs", 800, spin_range{30, 5000}), [this](const int value) { online_tb_ms_.store(value); });
 
-  return uci_options(quantized_weight_path, weight_path, hash_size, thread_count, ponder, syzygy_path);
+  return uci_options(quantized_weight_path, weight_path, hash_size, thread_count, ponder, syzygy_path, online_tb, online_tb_ms);
 }
 
 bool uci::should_quit() const noexcept { return should_quit_.load(); }
@@ -130,7 +132,29 @@ void uci::go() noexcept {
   if (orchestrator_.is_searching()) { return; }
 
   timer_.lap();
+  if (try_online_root()) { return; }
   orchestrator_.go(history, position);
+}
+
+bool uci::try_online_root() noexcept {
+  // Timed games only (not infinite / ponder / depth / nodes), at most a quarter of this move's planned time and never
+  // more than OnlineTBMs. Any failure or timeout: the normal search plays.
+  if (!online_tb_.load() || manager_.infinite || manager_.ponder || !manager_.min_budget.has_value()) { return false; }
+  const int budget = std::min(online_tb_ms_.load(), static_cast<int>(manager_.min_budget->count() / 4));
+  if (budget < 30) { return false; }
+
+  const search::syzygy::online_result result = search::syzygy::probe_online_root(position, budget);
+  if (!result.success) { return false; }
+
+  const bool win = result.category == "win" || result.category == "syzygy-win";
+  const bool loss = result.category == "loss" || result.category == "syzygy-loss";
+  const search::score_type raw = win ? search::tb_win_score : loss ? search::tb_loss_score : search::draw_score;
+  const std::string move_name = result.move.name(position.turn());
+  os << "info depth 1 seldepth 1 score cp " << raw * 288 / 1024 << " nodes 0 nps 0 time " << timer_.elapsed().count() << " tbhits 1 pv " << move_name
+     << std::endl;
+  os << "info string online tablebase: " << result.category << " dtz " << result.dtz << " (" << result.elapsed_ms << " ms)" << std::endl;
+  os << "bestmove " << move_name << std::endl;
+  return true;
 }
 
 void uci::ponder_hit() noexcept {
