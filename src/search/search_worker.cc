@@ -105,7 +105,8 @@ score_type search_worker::q_search(
     const transposition_table_entry entry = maybe.value();
     const bool is_cutoff = (entry.bound() == bound_type::lower && entry.score() >= beta) || (entry.bound() == bound_type::exact) ||
                            (entry.bound() == bound_type::upper && entry.score() <= alpha);
-    if (use_tt && is_cutoff) { return entry.score(); }
+    // No TT cutoff close to the 50-move limit: the stored score may not know the draw is coming.
+    if (use_tt && is_cutoff && bd.lat_.half_clock < 90) { return entry.score(); }
   }
 
   const auto [data_packet, feature_hash, static_value, value] = evaluate<is_pv, use_tt>(ss, eval_node, bd, maybe);
@@ -218,7 +219,7 @@ pv_search_result_t<is_root> search_worker::pv_search(
   const std::optional<transposition_table_entry> maybe = !ss.has_excluded() ? external.tt->find(bd.hash()) : std::nullopt;
   if (search_present(maybe)) {
     const transposition_table_entry entry = maybe.value();
-    const bool is_cutoff = !is_pv && entry.depth() >= depth &&
+    const bool is_cutoff = !is_pv && entry.depth() >= depth && bd.lat_.half_clock < 90 &&
                            ((entry.bound() == bound_type::lower && entry.score() >= beta) || entry.bound() == bound_type::exact ||
                             (entry.bound() == bound_type::upper && entry.score() <= alpha));
     if (is_cutoff) { return make_result(entry.score(), entry.best_move()); }

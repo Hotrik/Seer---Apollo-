@@ -62,6 +62,8 @@ tb_wdl_result probe_wdl(const chess::board& bd) noexcept {
       (bd.man_.white.bishop() | bd.man_.black.bishop()).data, (bd.man_.white.knight() | bd.man_.black.knight()).data,
       (bd.man_.white.pawn() | bd.man_.black.pawn()).data, rule_50, castling_rights, ep, turn);
 
+  // A cursed win / blessed loss is a draw under the 50-move rule, not a failed probe.
+  if (value == TB_CURSED_WIN || value == TB_BLESSED_LOSS) { return tb_wdl_result{true, wdl_type::draw}; }
   return tb_wdl_result::from_value(value);
 }
 
