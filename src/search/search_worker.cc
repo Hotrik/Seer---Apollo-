@@ -158,7 +158,14 @@ score_type search_worker::q_search(
   }
 
   if (legal_count == 0 && is_check) { return ss.loss_score(); }
-  if (legal_count == 0) { return value; }
+  if (legal_count == 0) {
+    // No capture or check here. With only king and pawns left right after the opponent captured a piece we may be
+    // stalemated: only then generate every move; none means a draw, not the static eval (idea from Stockfish).
+    const chess::move last = ss.counter();
+    const bool stalemate_possible = !bd.has_non_pawn_material() && !last.is_null() && last.is_capture() && last.captured() != chess::piece_type::pawn;
+    if (stalemate_possible && bd.generate_moves<chess::generation_mode::all>().size() == 0) { return draw_score; }
+    return value;
+  }
 
   if (use_tt && internal.keep_going()) {
     const bound_type bound = best_score >= beta ? bound_type::lower : bound_type::upper;
@@ -339,6 +346,12 @@ pv_search_result_t<is_root> search_worker::pv_search(
 
   int legal_count{0};
 
+  // Is the side to move down to its last non-pawn piece? (stalemate trap below)
+  const bool last_non_pawn_piece = [&] {
+    const auto& us = bd.man_.us(bd.turn());
+    return (us.knight() | us.bishop() | us.rook() | us.queen()).count() == 1;
+  }();
+
   for (const auto& [idx, mv] : orderer) {
     ++legal_count;
     if (!internal.keep_going()) { break; }
@@ -350,6 +363,10 @@ pv_search_result_t<is_root> search_worker::pv_search(
     const chess::board bd_ = bd.forward(mv);
 
     const bool try_pruning = !is_root && idx >= 2 && best_score > max_mate_score;
+    // Giving up our last non-pawn piece with a capture or check while worse than a draw may be a stalemate trap: SEE
+    // would prune it as a plain loss of material.
+    const bool stalemate_trap = alpha < draw_score && (mv.is_noisy() || bd_.is_check()) && mv.piece() != chess::piece_type::pawn &&
+                                mv.piece() != chess::piece_type::king && last_non_pawn_piece;
 
     // step 11. pruning
     if (try_pruning) {
@@ -362,12 +379,12 @@ pv_search_result_t<is_root> search_worker::pv_search(
 
       if (futility_prune) { continue; }
 
-      const bool quiet_see_prune = mv.is_quiet() && depth <= external.constants->quiet_see_prune_depth() &&
+      const bool quiet_see_prune = !stalemate_trap && mv.is_quiet() && depth <= external.constants->quiet_see_prune_depth() &&
                                    !bd.see_ge(mv, external.constants->quiet_see_prune_threshold(depth));
 
       if (quiet_see_prune) { continue; }
 
-      const bool noisy_see_prune = mv.is_noisy() && depth <= external.constants->noisy_see_prune_depth() &&
+      const bool noisy_see_prune = !stalemate_trap && mv.is_noisy() && depth <= external.constants->noisy_see_prune_depth() &&
                                    !bd.see_ge(mv, external.constants->noisy_see_prune_threshold(depth));
 
       if (noisy_see_prune) { continue; }
