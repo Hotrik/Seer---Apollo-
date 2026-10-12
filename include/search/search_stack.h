@@ -152,6 +152,19 @@ struct stack_view {
     return *this;
   }
 
+  // Every node starts with an empty PV, so an early return or a fail-high zero-window child never leaves a stale line
+  // for the parent to copy.
+  [[maybe_unused]] inline const stack_view& clear_pv() const noexcept {
+    view_->at(height_).pv_[0] = chess::move::null();
+    return *this;
+  }
+
+  [[maybe_unused]] inline const stack_view& set_single_pv(const chess::move& pv_mv) const noexcept {
+    view_->at(height_).pv_[0] = pv_mv;
+    view_->at(height_).pv_[1] = chess::move::null();
+    return *this;
+  }
+
   [[maybe_unused]] inline const stack_view& prepend_to_pv(const chess::move& pv_mv) const noexcept {
     const auto& child_pv = view_->at(height_ + 1).pv_;
     auto output_iter = view_->at(height_).pv_.begin();

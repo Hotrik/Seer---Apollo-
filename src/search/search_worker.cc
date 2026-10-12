@@ -89,9 +89,12 @@ score_type search_worker::q_search(
   if (should_update) { external.on_update(*this); }
 
   ++internal.nodes;
+  ss.clear_pv();
   const bool is_check = bd.is_check();
 
   if (bd.is_trivially_drawn()) { return draw_score; }
+  // A real threefold reached in a PV qsearch node (quiet checks, evasions) is a draw, as in pv_search.
+  if (is_pv && ss.is_repetition(bd, false)) { return draw_score; }
   if (ss.upcoming_cycle_exists(bd)) {
     if (draw_score >= beta) { return draw_score; }
     alpha = std::max(draw_score, alpha);
@@ -188,6 +191,7 @@ pv_search_result_t<is_root> search_worker::pv_search(
   // step 1. drop into qsearch if depth reaches zero
   if (depth <= 0) { return make_result(q_search<is_pv>(ss, eval_node, bd, alpha, beta, 0), chess::move::null()); }
   ++internal.nodes;
+  if constexpr (!is_root) { ss.clear_pv(); }
 
   // step 2. check if node is terminal
   const bool is_check = bd.is_check();
@@ -205,7 +209,10 @@ pv_search_result_t<is_root> search_worker::pv_search(
   }
 
   if constexpr (is_root) {
-    if (const syzygy::tb_dtz_result result = syzygy::probe_dtz(bd); result.success) { return make_result(result.score, result.move); }
+    if (const syzygy::tb_dtz_result result = syzygy::probe_dtz(bd); result.success) {
+      ss.set_single_pv(result.move);
+      return make_result(result.score, result.move);
+    }
   }
 
   const std::optional<transposition_table_entry> maybe = !ss.has_excluded() ? external.tt->find(bd.hash()) : std::nullopt;
